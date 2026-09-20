@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Efootball Madagascar — Générateur de fiches joueurs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root{
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+
+    --bg: #060809;
+    --surface: #0e1316;
+    --surface-2: #151c20;
+    --surface-3: #1c242a;
+    --line: #263038;
+    --line-soft: #1a2226;
+    --text: #eef3f1;
+    --text-dim: #96a3a3;
+    --text-faint: #576165;
+
+    --mg-white: #f4f7f5;
+    --mg-red: #e2222f;
+    --mg-green: #00824a;
+    --gold: #f0bf4c;
+
+    --st-contrat: #3aa4ff;
+    --st-transfere: var(--mg-red);
+    --st-libre: var(--mg-green);
+    --st-pret: var(--gold);
+  }
+  :root:not([data-theme="light"]){ color-scheme: dark; }
+  *{ box-sizing: border-box; }
+  html, body{ height: 100%; }
+  html{ scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body{
+    margin: 0;
+    background:
+      radial-gradient(circle at 10% -10%, rgba(0,130,74,0.16), transparent 40%),
+      radial-gradient(circle at 100% 0%, rgba(226,34,47,0.12), transparent 38%),
+      var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,h2,h3{ margin: 0; }
+  .disp{ font-family: 'Orbitron', 'Inter', sans-serif; }
+  .stat-font{ font-family: 'Rajdhani', 'Inter', sans-serif; }
+  button{ font-family: inherit; cursor: pointer; }
+  input, select{ font-family: inherit; }
+
+  /* ---------- Top bar ---------- */
+  header.topbar{
+    position: sticky;
+    top: 0;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 30;
+    background: rgba(6,8,9,0.86);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner{
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .flag-chip{
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    flex-shrink: 0;
+    overflow: hidden;
+    display: flex;
+    border: 1px solid var(--line);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.02) inset;
+  }
+  .flag-chip .bar{ flex: 1; }
+  .flag-chip .bar.white{ background: var(--mg-white); }
+  .flag-chip .bar-stack{ flex: 1; display: flex; flex-direction: column; }
+  .flag-chip .bar-stack .half{ flex: 1; }
+  .flag-chip .bar-stack .half.red{ background: var(--mg-red); }
+  .flag-chip .bar-stack .half.green{ background: var(--mg-green); }
+
+  .topbar-title h1{
+    font-size: 18px;
+    letter-spacing: 0.02em;
+    font-weight: 700;
+  }
+  .topbar-title p{
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .search-wrap{
+    margin-left: auto;
+    position: relative;
+    flex: 1 1 240px;
+    max-width: 380px;
+    min-width: 160px;
+  }
+  .search-wrap svg{
+    position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+    color: var(--text-faint); pointer-events: none;
+  }
+  #search-input{
+    width: 100%;
+    background: var(--surface-2);
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 13px 10px 38px;
+    color: var(--text);
+    font-size: 13.5px;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  #search-input::placeholder{ color: var(--text-faint); }
+  #search-input:focus{ border-color: var(--mg-green); box-shadow: 0 0 0 3px rgba(0,130,74,0.22); }
+
+  /* ---------- Layout ---------- */
+  main{
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 28px 24px 80px;
+  }
+  .workspace{
+    display: grid;
+    grid-template-columns: minmax(300px, 420px) 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  .panel{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 22px;
+  }
+  .panel h2{
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    font-weight: 700;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel h2 .dot{
+    width: 7px; height: 7px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--mg-green), var(--gold));
+    flex-shrink: 0;
+  }
+
+  /* ---------- Form ---------- */
+  .field{ margin-bottom: 15px; }
+  .field label{
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    letter-spacing: 0.01em;
+  }
+  .field input[type="text"], .field select{
+    width: 100%;
+    background: var(--surface-2);
+    border: 1.5px solid var(--line);
+    border-radius: 9px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .field input[type="text"]:focus, .field select:focus{
+    border-color: var(--mg-green);
+    box-shadow: 0 0 0 3px rgba(0,130,74,0.18);
+  }
+  .field select{ appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2396a3a3' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 34px;
+  }
+  .row-2{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .upload-row{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .upload-thumb{
+    width: 46px; height: 46px;
+    border-radius: 10px;
+    border: 1.5px dashed var(--line);
+    background: var(--surface-2);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .upload-thumb img{ width: 100%; height: 100%; object-fit: cover; }
+  .upload-thumb svg{ color: var(--text-faint); }
+  .upload-btn{
+    background: var(--surface-3);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 9px;
+    padding: 9px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .upload-btn:hover{ border-color: var(--mg-green); background: #1d2a27; }
+  .upload-btn input[type="file"]{ display: none; }
+  .upload-clear{
+    background: none; border: none; color: var(--text-faint);
+    font-size: 12px; text-decoration: underline; padding: 4px;
+  }
+  .upload-clear:hover{ color: var(--mg-red); }
+
+  .form-actions{
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .btn{
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 700;
+    border: none;
+    flex: 1;
+    transition: transform .12s ease, filter .12s ease, opacity .12s ease;
+    letter-spacing: 0.01em;
+  }
+  .btn:active{ transform: scale(0.98); }
+  .btn-primary{
+    background: linear-gradient(120deg, var(--mg-green), #00a85f);
+    color: #06120c;
+  }
+  .btn-primary:hover{ filter: brightness(1.08); }
+  .btn-ghost{
+    background: var(--surface-3);
+    color: var(--text-dim);
+    border: 1px solid var(--line);
+    flex: 0 0 auto;
+    padding: 12px 14px;
+  }
+  .btn-ghost:hover{ color: var(--text); border-color: var(--text-faint); }
+  #edit-banner{
+    display: none;
+    background: rgba(240,191,76,0.1);
+    border: 1px solid rgba(240,191,76,0.35);
+    color: var(--gold);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 9px 12px;
+    border-radius: 9px;
+    margin-bottom: 14px;
+  }
+
+  /* ---------- Preview panel ---------- */
+  .preview-panel{
+    position: sticky;
+    top: calc(84px + env(safe-area-inset-top, 0px));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .card-stage{
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 10px 0;
+  }
+
+  /* ---------- The exported card ---------- */
+  #player-card{
+    width: 340px;
+    aspect-ratio: 3 / 4.3;
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(165deg, #0c1210 0%, #0a1013 55%, #0d0f16 100%);
+    border: 1px solid rgba(255,255,255,0.07);
+    box-shadow: 0 20px 50px -20px rgba(0,0,0,0.7);
+    color: #fff;
+  }
+  .card-bg-flag{
+    position: absolute;
+    inset: 0;
+    opacity: 0.07;
+    display: flex;
+    flex-direction: column;
+    z-index: 0;
+  }
+  .card-bg-flag .fw{ flex: 1; background: #fff; }
+  .card-bg-flag .fr{ flex: 1; background: var(--mg-red); }
+  .card-bg-flag .fg{ flex: 1; background: var(--mg-green); }
+  .card-force-lines{
+    position: absolute; inset: 0; z-index: 0; opacity: 0.5;
+  }
+  .card-status-glow{
+    position: absolute; inset: 0; z-index: 0;
+    background: radial-gradient(circle at 80% 0%, var(--glow, rgba(0,130,74,0.35)), transparent 55%);
+  }
+
+  .card-content{
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 16px 16px 14px;
+  }
+  .card-head{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-brand{
+    display: flex; align-items: center; gap: 6px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.09em;
+    color: rgba(255,255,255,0.55);
+  }
+  .card-brand svg{ width: 12px; height: 12px; }
+  .card-serie{
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.03em;
+  }
+
+  .card-photo-wrap{
+    margin-top: 10px;
+    height: 42%;
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+    background: linear-gradient(160deg, #1a2420, #0e1512);
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .card-photo-wrap img{ width: 100%; height: 100%; object-fit: cover; }
+  .card-photo-wrap svg{ color: rgba(255,255,255,0.16); width: 40%; height: 40%; }
+  .card-team-badge{
+    position: absolute;
+    top: 8px; right: 8px;
+    width: 34px; height: 34px;
+    border-radius: 9px;
+    background: rgba(6,10,9,0.72);
+    border: 1px solid rgba(255,255,255,0.14);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    backdrop-filter: blur(2px);
+  }
+  .card-team-badge img{ width: 100%; height: 100%; object-fit: cover; }
+  .card-team-badge span{
+    font-family: 'Orbitron', sans-serif;
+    font-size: 8px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.7);
+  }
+  .card-stars{
+    position: absolute;
+    bottom: 8px; left: 8px;
+    display: flex; gap: 2px;
+  }
+  .card-stars svg{ width: 11px; height: 11px; color: var(--gold); filter: drop-shadow(0 0 3px rgba(240,191,76,0.6)); }
+
+  .card-identity{
+    margin-top: 12px;
+  }
+  .card-name{
+    font-family: 'Orbitron', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.15;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+  }
+  .card-pseudo{
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gold);
+    margin-top: 2px;
+  }
+  .card-pseudo::before{ content: "@"; opacity: 0.6; }
+
+  .card-team-line{
+    margin-top: 6px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.55);
+    font-weight: 500;
+  }
+
+  .card-divider{
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent);
+    margin: 12px 0 10px;
+  }
+
+  .card-stats{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 10px;
+    flex: 1;
+  }
+  .card-stat-label{
+    font-size: 8.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.38);
+    font-weight: 700;
+    margin: 0 0 2px;
+  }
+  .card-stat-value{
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    word-break: break-word;
+  }
+
+  .card-footer{
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .card-status-pill{
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 100px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: color-mix(in srgb, var(--stcolor, #3aa4ff) 18%, transparent);
+    color: var(--stcolor, #3aa4ff);
+    border: 1px solid color-mix(in srgb, var(--stcolor, #3aa4ff) 45%, transparent);
+  }
+  .card-status-pill::before{
+    content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+  }
+  .card-mg-tag{
+    font-family: 'Orbitron', sans-serif;
+    font-size: 8px;
+    letter-spacing: 0.06em;
+    color: rgba(255,255,255,0.32);
+  }
+
+  #download-btn{
+    width: 100%;
+    max-width: 340px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    background: linear-gradient(120deg, var(--mg-red), #ff5a4e);
+    color: #fff;
+    border: none;
+    border-radius: 11px;
+    padding: 13px 16px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  #download-btn:hover{ filter: brightness(1.06); }
+  #download-btn:disabled{
+    background: var(--surface-3);
+    color: var(--text-faint);
+    cursor: not-allowed;
+  }
+  #download-note{
+    font-size: 11.5px;
+    color: var(--text-faint);
+    text-align: center;
+    max-width: 340px;
+  }
+
+  /* ---------- Saved players list ---------- */
+  .list-section{ margin-top: 32px; }
+  .list-header{
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .list-header h2{
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .list-header .count{
+    font-size: 12.5px;
+    color: var(--text-dim);
+  }
+  .list-header .count b{ color: var(--gold); }
+
+  .players-table-wrap{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  table{ width: 100%; border-collapse: collapse; }
+  thead th{
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+    font-weight: 700;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-2);
+  }
+  tbody td{
+    padding: 12px 16px;
+    font-size: 13.5px;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: middle;
+  }
+  tbody tr:last-child td{ border-bottom: none; }
+  tbody tr:hover{ background: rgba(255,255,255,0.02); }
+  .cell-player{ display: flex; align-items: center; gap: 10px; }
+  .cell-thumb{
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--surface-3); overflow: hidden; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--line);
+  }
+  .cell-thumb img{ width: 100%; height: 100%; object-fit: cover; }
+  .cell-thumb svg{ width: 15px; height: 15px; color: var(--text-faint); }
+  .cell-name{ font-weight: 600; color: var(--text); }
+  .cell-pseudo{ font-size: 12px; color: var(--text-dim); }
+
+  .mini-badge{
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'Rajdhani', sans-serif;
+    padding: 4px 10px;
+    border-radius: 100px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .mini-badge::before{ content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .row-actions{ display: flex; gap: 6px; justify-content: flex-end; }
+  .icon-btn{
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    background: var(--surface-3);
+    border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-dim);
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .icon-btn:hover{ color: var(--text); border-color: var(--text-faint); }
+  .icon-btn.danger:hover{ color: var(--mg-red); border-color: var(--mg-red); }
+
+  .empty-row td{
+    text-align: center;
+    padding: 46px 16px;
+    color: var(--text-dim);
+  }
+  .empty-row .emoji{ font-size: 26px; display: block; margin-bottom: 8px; }
+
+  footer{
+    text-align: center;
+    padding: 26px 24px 44px;
+    font-size: 12px;
+    color: var(--text-faint);
+    border-top: 1px solid var(--line-soft);
+    margin-top: 30px;
+  }
+
+  @media (max-width: 900px){
+    .workspace{ grid-template-columns: 1fr; }
+    .preview-panel{ position: static; }
+    .players-table-wrap{ overflow-x: auto; }
+    table{ min-width: 640px; }
+  }
+  @media (max-width: 520px){
+    .topbar-inner{ padding: 12px 16px; flex-wrap: wrap; }
+    .search-wrap{ order: 3; flex-basis: 100%; max-width: none; }
+    main{ padding: 22px 16px 60px; }
+    .row-2{ grid-template-columns: 1fr; }
+    #player-card{ width: 100%; max-width: 340px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="flag-chip">
+      <div class="bar white"></div>
+      <div class="bar-stack">
+        <div class="half red"></div>
+        <div class="half green"></div>
+      </div>
+    </div>
+    <div class="topbar-title">
+      <h1 class="disp">EFOOTBALL MADAGASCAR</h1>
+      <p>Générateur de fiches joueurs</p>
+    </div>
+    <div class="search-wrap">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input id="search-input" type="text" placeholder="Rechercher nom, pseudo, team…" autocomplete="off">
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="workspace">
+
+    <!-- ============ FORM PANEL ============ -->
+    <section class="panel">
+      <h2><span class="dot"></span>Fiche du joueur</h2>
+
+      <div id="edit-banner">✎ Modification d'une fiche existante — enregistrer mettra à jour cette fiche.</div>
+
+      <form id="player-form">
+        <div class="field">
+          <label for="f-nom">Nom du joueur</label>
+          <input type="text" id="f-nom" placeholder="Ex. Rakoto Andry" required>
+        </div>
+
+        <div class="field">
+          <label for="f-pseudo">Pseudo du joueur</label>
+          <input type="text" id="f-pseudo" placeholder="Ex. RAKZ_10" required>
+        </div>
+
+        <div class="field">
+          <label for="f-team">Team</label>
+          <select id="f-team" required></select>
+        </div>
+
+        <div class="field">
+          <label>Logo de la team</label>
+          <div class="upload-row">
+            <div class="upload-thumb" id="team-logo-thumb">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2 3 6v6c0 5 4 9 9 10 5-1 9-5 9-10V6l-9-4Z"/></svg>
+            </div>
+            <label class="upload-btn">
+              Importer
+              <input type="file" id="f-team-logo" accept="image/*">
+            </label>
+            <button type="button" class="upload-clear" id="clear-team-logo">effacer</button>
+          </div>
+        </div>
+
+        <div class="row-2">
+          <div class="field">
+            <label for="f-division">Division</label>
+            <input type="text" id="f-division" placeholder="Ex. Division 1">
+          </div>
+          <div class="field">
+            <label for="f-serie">Série</label>
+            <input type="text" id="f-serie" placeholder="Ex. 12347488B">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="f-contrat">Contrat</label>
+          <input type="text" id="f-contrat" placeholder="Ex. Jusqu'en 2027">
+        </div>
+
+        <div class="row-2">
+          <div class="field">
+            <label for="f-statut">Statut</label>
+            <select id="f-statut">
+              <option value="Sous contrat">Sous contrat</option>
+              <option value="Transféré">Transféré</option>
+              <option value="Libre">Libre</option>
+              <option value="Prêt">Prêt</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-clause">Clause du joueur</label>
+            <input type="text" id="f-clause" placeholder="Ex. 50M / Non négociable">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Photo du joueur</label>
+          <div class="upload-row">
+            <div class="upload-thumb" id="photo-thumb">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>
+            </div>
+            <label class="upload-btn">
+              Importer
+              <input type="file" id="f-photo" accept="image/*">
+            </label>
+            <button type="button" class="upload-clear" id="clear-photo">effacer</button>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="save-btn">Ajouter / Sauvegarder le joueur</button>
+          <button type="button" class="btn btn-ghost" id="reset-btn">Réinitialiser</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ============ PREVIEW PANEL ============ -->
+    <section class="preview-panel">
+      <div class="card-stage">
+        <div id="player-card">
+          <div class="card-bg-flag">
+            <div class="fw"></div><div class="fr"></div><div class="fg"></div>
+          </div>
+          <svg class="card-force-lines" viewBox="0 0 340 480" preserveAspectRatio="none">
+            <line x1="0" y1="60" x2="200" y2="0" stroke="rgba(255,255,255,0.05)" stroke-width="18"/>
+            <line x1="0" y1="110" x2="260" y2="0" stroke="rgba(255,255,255,0.03)" stroke-width="10"/>
+            <line x1="180" y1="480" x2="340" y2="360" stroke="rgba(240,191,76,0.06)" stroke-width="24"/>
+          </svg>
+          <div class="card-status-glow" id="card-glow"></div>
+
+          <div class="card-content">
+            <div class="card-head">
+              <div class="card-brand">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2c2.5 2.7 4 6.3 4 10s-1.5 7.3-4 10c-2.5-2.7-4-6.3-4-10s1.5-7.3 4-10Z"/></svg>
+                EFOOTBALL MG
+              </div>
+              <div class="card-serie" id="c-serie">—</div>
+            </div>
+
+            <div class="card-photo-wrap">
+              <img id="c-photo-img" style="display:none;" alt="Photo du joueur">
+              <svg id="c-photo-placeholder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>
+              <div class="card-team-badge" id="c-team-badge">
+                <span id="c-team-initial">—</span>
+                <img id="c-team-logo-img" style="display:none;" alt="Logo team">
+              </div>
+              <div class="card-stars">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.3L22 9l-5 4.9L18.2 21 12 17.3 5.8 21 7 13.9 2 9l7.1-.7L12 2Z"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.3L22 9l-5 4.9L18.2 21 12 17.3 5.8 21 7 13.9 2 9l7.1-.7L12 2Z"/></svg>
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.3L22 9l-5 4.9L18.2 21 12 17.3 5.8 21 7 13.9 2 9l7.1-.7L12 2Z"/></svg>
+              </div>
+            </div>
+
+            <div class="card-identity">
+              <div class="card-name" id="c-name">NOM DU JOUEUR</div>
+              <div class="card-pseudo" id="c-pseudo">pseudo</div>
+              <div class="card-team-line" id="c-team-line">Team —</div>
+            </div>
+
+            <div class="card-divider"></div>
+
+            <div class="card-stats">
+              <div>
+                <p class="card-stat-label">Division</p>
+                <p class="card-stat-value" id="c-division">—</p>
+              </div>
+              <div>
+                <p class="card-stat-label">Contrat</p>
+                <p class="card-stat-value" id="c-contrat">—</p>
+              </div>
+              <div style="grid-column: 1 / -1;">
+                <p class="card-stat-label">Clause</p>
+                <p class="card-stat-value" id="c-clause">—</p>
+              </div>
+            </div>
+
+            <div class="card-footer">
+              <span class="card-status-pill" id="c-status">Sous contrat</span>
+              <span class="card-mg-tag">MADAGASCAR</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button id="download-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13m0 0-4-4m4 4 4-4M5 21h14"/></svg>
+        Télécharger l'affiche (PNG)
+      </button>
+      <p id="download-note">Génère un visuel PNG haute définition de la fiche.</p>
+    </section>
+  </div>
+
+  <!-- ============ SAVED LIST ============ -->
+  <section class="list-section">
+    <div class="list-header">
+      <h2>Joueurs enregistrés</h2>
+      <span class="count" id="list-count"><b>0</b> fiche</span>
+    </div>
+
+    <div class="players-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Joueur</th>
+            <th>Team</th>
+            <th>Division</th>
+            <th>Statut</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="players-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Efootball Madagascar — communauté non affiliée officiellement à KONAMI. Les fiches sont enregistrées localement dans ce navigateur.
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Teams ----------
+  var TEAMS = [
+    "NxZ","BSC","ZTAM","RISE","BMK×JA","TMD","ES","e-TR","FEROX","ALPHA",
+    "VORTEX","DYNASTY","e-TGM","MDG","ULTIMA","PIXEL","eGMS","KBM","CDI","PK17",
+    "PHENIX","KARNYX","NEURAL","INVICTUS","ALTA","WSF","IRTIS","AG","GES","eGS",
+    "INFERNO","E-WOLVE","E_GOLAZO","SKY","GALAZY","ZN","EGO"
+  ];
+
+  var STATUS_COLOR = {
+    "Sous contrat": getCss('--st-contrat'),
+    "Transféré": getCss('--st-transfere'),
+    "Libre": getCss('--st-libre'),
+    "Prêt": getCss('--st-pret')
+  };
+  var STATUS_GLOW = {
+    "Sous contrat": "rgba(58,164,255,0.32)",
+    "Transféré": "rgba(226,34,47,0.32)",
+    "Libre": "rgba(0,130,74,0.38)",
+    "Prêt": "rgba(240,191,76,0.32)"
+  };
+  function getCss(name){
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  var STORAGE_KEY = "efoot_mg_players_v1";
+
+  // ---------- State ----------
+  var players = [];
+  var editingId = null;
+
+  // ---------- DOM refs ----------
+  var $ = function(id){ return document.getElementById(id); };
+  var teamSelect = $('f-team');
+  var form = $('player-form');
+  var editBanner = $('edit-banner');
+  var saveBtn = $('save-btn');
+  var resetBtn = $('reset-btn');
+  var tbody = $('players-tbody');
+  var listCount = $('list-count');
+  var searchInput = $('search-input');
+
+  var fields = {
+    nom: $('f-nom'), pseudo: $('f-pseudo'), team: $('f-team'),
+    division: $('f-division'), serie: $('f-serie'), contrat: $('f-contrat'),
+    statut: $('f-statut'), clause: $('f-clause')
+  };
+
+  var teamLogoData = "";
+  var photoData = "";
+
+  // ---------- Init team select ----------
+  TEAMS.forEach(function(t){
+    var opt = document.createElement('option');
+    opt.value = t;
+    opt.textContent = t;
+    teamSelect.appendChild(opt);
+  });
+
+  // ---------- Storage ----------
+  function loadPlayers(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      players = raw ? JSON.parse(raw) : [];
+    }catch(e){
+      players = [];
+    }
+  }
+  function savePlayers(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(players));
+    }catch(e){
+      console.error("Sauvegarde locale impossible :", e);
+    }
+  }
+
+  // ---------- Utility ----------
+  function uid(){ return 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7); }
+  function escapeHtml(str){
+    var d = document.createElement('div');
+    d.textContent = str == null ? "" : String(str);
+    return d.innerHTML;
+  }
+  function initials(name){
+    if(!name) return "?";
+    return name.trim().split(/\s+/).map(function(w){return w[0];}).join("").slice(0,2).toUpperCase();
+  }
+  function fileToDataUrl(file, cb){
+    var reader = new FileReader();
+    reader.onload = function(e){ cb(e.target.result); };
+    reader.readAsDataURL(file);
+  }
+
+  // ---------- Live preview ----------
+  function updatePreview(){
+    var nom = fields.nom.value.trim() || "Nom du joueur";
+    var pseudo = fields.pseudo.value.trim() || "pseudo";
+    var team = fields.team.value || "—";
+    var division = fields.division.value.trim() || "—";
+    var serie = fields.serie.value.trim() || "—";
+    var contrat = fields.contrat.value.trim() || "—";
+    var statut = fields.statut.value;
+    var clause = fields.clause.value.trim() || "—";
+
+    $('c-name').textContent = nom.toUpperCase();
+    $('c-pseudo').textContent = pseudo;
+    $('c-team-line').textContent = "Team " + team;
+    $('c-serie').textContent = serie;
+    $('c-division').textContent = division;
+    $('c-contrat').textContent = contrat;
+    $('c-clause').textContent = clause;
+
+    var pill = $('c-status');
+    pill.textContent = statut;
+    var color = STATUS_COLOR[statut] || STATUS_COLOR["Sous contrat"];
+    pill.style.setProperty('--stcolor', color);
+    $('card-glow').style.background = "radial-gradient(circle at 80% 0%, " + (STATUS_GLOW[statut] || STATUS_GLOW["Sous contrat"]) + ", transparent 55%)";
+
+    // Photo joueur
+    var img = $('c-photo-img');
+    var placeholder = $('c-photo-placeholder');
+    if(photoData){
+      img.src = photoData;
+      img.style.display = "block";
+      placeholder.style.display = "none";
+    } else {
+      img.style.display = "none";
+      placeholder.style.display = "block";
+    }
+
+    // Logo team
+    var logoImg = $('c-team-logo-img');
+    var teamInitial = $('c-team-initial');
+    if(teamLogoData){
+      logoImg.src = teamLogoData;
+      logoImg.style.display = "block";
+      teamInitial.style.display = "none";
+    } else {
+      logoImg.style.display = "none";
+      teamInitial.style.display = "block";
+      teamInitial.textContent = (team && team !== "—") ? team.slice(0,3).toUpperCase() : "—";
+    }
+
+    // Thumbs dans le formulaire
+    renderThumb($('photo-thumb'), photoData, 'photo');
+    renderThumb($('team-logo-thumb'), teamLogoData, 'team');
+  }
+
+  function renderThumb(el, dataUrl, kind){
+    if(dataUrl){
+      el.innerHTML = '<img src="' + dataUrl + '" alt="">';
+    } else {
+      el.innerHTML = kind === 'photo'
+        ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>'
+        : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2 3 6v6c0 5 4 9 9 10 5-1 9-5 9-10V6l-9-4Z"/></svg>';
+    }
+  }
+
+  ['nom','pseudo','team','division','serie','contrat','statut','clause'].forEach(function(key){
+    fields[key].addEventListener('input', updatePreview);
+    fields[key].addEventListener('change', updatePreview);
+  });
+
+  // ---------- Uploads ----------
+  $('f-photo').addEventListener('change', function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    fileToDataUrl(file, function(dataUrl){
+      photoData = dataUrl;
+      updatePreview();
+    });
+  });
+  $('clear-photo').addEventListener('click', function(){
+    photoData = "";
+    $('f-photo').value = "";
+    updatePreview();
+  });
+  $('f-team-logo').addEventListener('change', function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    fileToDataUrl(file, function(dataUrl){
+      teamLogoData = dataUrl;
+      updatePreview();
+    });
+  });
+  $('clear-team-logo').addEventListener('click', function(){
+    teamLogoData = "";
+    $('f-team-logo').value = "";
+    updatePreview();
+  });
+
+  // ---------- Form submit (add / update) ----------
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    if(!fields.nom.value.trim() || !fields.pseudo.value.trim()){
+      fields.nom.focus();
+      return;
+    }
+
+    var record = {
+      id: editingId || uid(),
+      nom: fields.nom.value.trim(),
+      pseudo: fields.pseudo.value.trim(),
+      team: fields.team.value,
+      division: fields.division.value.trim(),
+      serie: fields.serie.value.trim(),
+      contrat: fields.contrat.value.trim(),
+      statut: fields.statut.value,
+      clause: fields.clause.value.trim(),
+      photo: photoData,
+      teamLogo: teamLogoData
+    };
+
+    if(editingId){
+      var idx = players.findIndex(function(p){ return p.id === editingId; });
+      if(idx !== -1) players[idx] = record;
+    } else {
+      players.unshift(record);
+    }
+
+    savePlayers();
+    resetForm();
+    renderList(searchInput.value);
+  });
+
+  resetBtn.addEventListener('click', resetForm);
+
+  function resetForm(){
+    editingId = null;
+    editBanner.style.display = "none";
+    saveBtn.textContent = "Ajouter / Sauvegarder le joueur";
+    form.reset();
+    fields.statut.value = "Sous contrat";
+    photoData = "";
+    teamLogoData = "";
+    $('f-photo').value = "";
+    $('f-team-logo').value = "";
+    updatePreview();
+  }
+
+  function loadPlayerToForm(id){
+    var p = players.find(function(pl){ return pl.id === id; });
+    if(!p) return;
+    editingId = id;
+    editBanner.style.display = "block";
+    saveBtn.textContent = "Mettre à jour la fiche";
+
+    fields.nom.value = p.nom;
+    fields.pseudo.value = p.pseudo;
+    fields.team.value = p.team;
+    fields.division.value = p.division;
+    fields.serie.value = p.serie;
+    fields.contrat.value = p.contrat;
+    fields.statut.value = p.statut;
+    fields.clause.value = p.clause;
+    photoData = p.photo || "";
+    teamLogoData = p.teamLogo || "";
+
+    updatePreview();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function deletePlayer(id){
+    players = players.filter(function(p){ return p.id !== id; });
+    savePlayers();
+    if(editingId === id) resetForm();
+    renderList(searchInput.value);
+  }
+
+  // ---------- List rendering + search ----------
+  function renderList(query){
+    var q = (query || "").trim().toLowerCase();
+    var list = !q ? players : players.filter(function(p){
+      return (p.nom || "").toLowerCase().indexOf(q) !== -1 ||
+             (p.pseudo || "").toLowerCase().indexOf(q) !== -1 ||
+             (p.team || "").toLowerCase().indexOf(q) !== -1;
+    });
+
+    listCount.innerHTML = '<b>' + list.length + '</b> fiche' + (list.length > 1 ? 's' : '');
+
+    if(list.length === 0){
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="5"><span class="emoji">📋</span>' +
+        (players.length === 0 ? "Aucune fiche enregistrée pour l'instant." : "Aucun résultat pour cette recherche.") +
+        '</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = list.map(function(p){
+      var color = STATUS_COLOR[p.statut] || STATUS_COLOR["Sous contrat"];
+      var thumb = p.photo
+        ? '<img src="' + p.photo + '" alt="">'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>';
+      return '' +
+        '<tr>' +
+          '<td><div class="cell-player">' +
+            '<div class="cell-thumb">' + thumb + '</div>' +
+            '<div><div class="cell-name">' + escapeHtml(p.nom) + '</div>' +
+            '<div class="cell-pseudo">@' + escapeHtml(p.pseudo) + '</div></div>' +
+          '</div></td>' +
+          '<td>' + escapeHtml(p.team || '—') + '</td>' +
+          '<td>' + escapeHtml(p.division || '—') + '</td>' +
+          '<td><span class="mini-badge" style="color:' + color + ';background:color-mix(in srgb,' + color + ' 16%, transparent);border:1px solid color-mix(in srgb,' + color + ' 40%, transparent);">' + escapeHtml(p.statut) + '</span></td>' +
+          '<td><div class="row-actions">' +
+            '<button class="icon-btn" title="Charger / modifier" data-action="edit" data-id="' + p.id + '">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"/></svg>' +
+            '</button>' +
+            '<button class="icon-btn danger" title="Supprimer" data-action="delete" data-id="' + p.id + '">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>' +
+            '</button>' +
+          '</div></td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  tbody.addEventListener('click', function(e){
+    var btn = e.target.closest('[data-action]');
+    if(!btn) return;
+    var id = btn.getAttribute('data-id');
+    if(btn.getAttribute('data-action') === 'edit') loadPlayerToForm(id);
+    if(btn.getAttribute('data-action') === 'delete') deletePlayer(id);
+  });
+
+  searchInput.addEventListener('input', function(){
+    renderList(searchInput.value);
+  });
+
+  // ---------- PNG export via downloads capability ----------
+  var downloadBtn = $('download-btn');
+  var downloadNote = $('download-note');
+  var downloadsCap = null;
+
+  (function initDownloads(){
+    if(!(window.claude && typeof window.claude.use === 'function')){
+      downloadBtn.disabled = true;
+      downloadNote.textContent = "Le téléchargement n'est pas disponible dans cet environnement.";
+      return;
+    }
+    window.claude.use("downloads").then(function(cap){
+      downloadsCap = cap;
+      if(!cap){
+        downloadBtn.disabled = true;
+        downloadNote.textContent = "Le téléchargement n'est pas disponible dans cette vue.";
+      }
+    }).catch(function(){
+      downloadBtn.disabled = true;
+      downloadNote.textContent = "Le téléchargement n'est pas disponible dans cette vue.";
+    });
+  })();
+
+  downloadBtn.addEventListener('click', function(){
+    if(!downloadsCap){
+      downloadNote.textContent = "Le téléchargement n'est pas disponible dans cette vue.";
+      return;
+    }
+    if(typeof html2canvas !== 'function'){
+      downloadNote.textContent = "Erreur : la bibliothèque d'export n'a pas pu se charger.";
+      return;
+    }
+
+    downloadBtn.disabled = true;
+    var originalLabel = downloadBtn.innerHTML;
+    downloadBtn.textContent = "Génération en cours…";
+
+    var node = $('player-card');
+    html2canvas(node, {
+      backgroundColor: null,
+      scale: 3,
+      useCORS: true
+    }).then(function(canvas){
+      canvas.toBlob(function(blob){
+        if(!blob){
+          downloadNote.textContent = "Erreur lors de la génération de l'image.";
+          downloadBtn.disabled = false;
+          downloadBtn.innerHTML = originalLabel;
+          return;
+        }
+        var pseudo = (fields.pseudo.value.trim() || "joueur").replace(/[^a-z0-9_-]+/gi, "_");
+        downloadsCap.save({ filename: "fiche_" + pseudo + ".png", data: blob }).then(function(res){
+          downloadNote.textContent = res.status === "saved" ? "Affiche téléchargée ✓" : "Affiche envoyée ✓";
+        }).catch(function(err){
+          var code = err && err.code;
+          if(code === "declined"){
+            downloadNote.textContent = "Téléchargement annulé.";
+          } else if(code === "too_large"){
+            downloadNote.textContent = "L'image est trop volumineuse pour cette destination.";
+          } else {
+            downloadNote.textContent = "Le téléchargement a échoué. Réessayez.";
+          }
+        }).finally(function(){
+          downloadBtn.disabled = false;
+          downloadBtn.innerHTML = originalLabel;
+        });
+      }, "image/png");
+    }).catch(function(){
+      downloadNote.textContent = "Erreur lors de la génération de l'image.";
+      downloadBtn.disabled = false;
+      downloadBtn.innerHTML = originalLabel;
+    });
+  });
+
+  // ---------- Boot ----------
+  loadPlayers();
+  resetForm();
+  renderList("");
+})();
+</script>
+
+</body>
+</html>
