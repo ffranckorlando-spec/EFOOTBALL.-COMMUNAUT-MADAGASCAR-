@@ -921,13 +921,44 @@
       players = [];
     }
   }
-  function savePlayers(){
-    try{
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(players));
-    }catch(e){
-      console.error("Sauvegarde locale impossible :", e);
+  async function savePlayers(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(players));
+    
+    // Si Supabase est prêt, on synchronise la base de données
+    if (window.supabase) {
+      // On récupère le dernier joueur ajouté ou modifié (le dernier de la liste)
+      const dernierJoueur = players[players.length - 1];
+      if (dernierJoueur) {
+        // Envoi ou mise à jour dans Supabase
+        const { error } = await window.supabase
+          .from('players')
+          .upsert({
+            name: dernierJoueur.name || '',
+            pseudo: dernierJoueur.pseudo || '',
+            team: dernierJoueur.team || '',
+            division: dernierJoueur.division || '',
+            serie: dernierJoueur.serie || '',
+            contract: dernierJoueur.contract || '',
+            status: dernierJoueur.status || '',
+            clause: dernierJoueur.clause || '',
+            photo: dernierJoueur.photo || '',
+            team_logo: dernierJoueur.teamLogo || dernierJoueur.team_logo || ''
+          }, { onConflict: 'name' }); // Évite les doublons basés sur le nom
+
+        if (error) console.error("Erreur de synchro Supabase:", error.message);
+        
+        // On recharge la liste publique après la sauvegarde
+        if (typeof chargerJoueursSupabase === 'function') {
+          chargerJoueursSupabase();
+        }
+      }
     }
+  }catch(e){
+    console.error("Sauvegarde locale en échec", e);
   }
+  }
+  
 
   // ---------- Utility ----------
   function uid(){ return 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7); }
