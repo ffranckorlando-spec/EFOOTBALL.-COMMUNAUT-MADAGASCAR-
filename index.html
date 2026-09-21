@@ -1252,11 +1252,71 @@
       downloadBtn.innerHTML = originalLabel;
     });
   });
+// 1. Charger le SDK de Supabase de manière dynamique
+const supabaseScript = document.createElement('script');
+supabaseScript.src = "https://jsdelivr.net";
+document.head.appendChild(supabaseScript);
 
-  // ---------- Boot ----------
-  loadPlayers();
+supabaseScript.onload = function() {
+  // 2. Vos identifiants Supabase (À REMPLACER par vos vraies clés)
+  const SUPABASE_URL = "https://mnhfblqcrxljypqcpvux.supabase.co/rest/v1/"; 
+  const SUPABASE_ANON_KEY = "sb_secret_0C8EhPZTkyk5B-PhmgtFig_UxH0wXUm";
+
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // 3. Fonction pour charger les joueurs depuis Supabase
+  async function chargerJoueursSupabase() {
+    const { data: players, error } = await supabase
+      .from('players')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error("Erreur Supabase :", error.message);
+      return;
+    }
+
+    const tableBody = document.querySelector("table tbody") || document.querySelector(".joueurs-liste"); 
+    const compteurFiches = document.querySelector("strong"); 
+
+    if (!tableBody) return;
+    tableBody.innerHTML = "";
+
+    if (compteurFiches) {
+      compteurFiches.textContent = `${players.length} fiches`;
+    }
+
+    players.forEach(joueur => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <img src="${joueur.photo || 'https://placeholder.com'}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+            <div>
+              <strong>${joueur.name}</strong><br>
+              <small style="color: gray;">${joueur.pseudo || ''}</small>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 5px;">
+            <img src="${joueur.team_logo || 'https://placeholder.com'}" style="width: 20px; height: 20px; object-fit: contain;">
+            <span>${joueur.team || '—'}</span>
+          </div>
+        </td>
+        <td>${joueur.division || '—'} (${joueur.serie || '—'})</td>
+        <td><span class="badge-statut">${joueur.status || '—'}</span></td>
+      `;
+      tableBody.appendChild(row);
+    });
+  }
+
+  // Lancement automatique
   resetForm();
-  renderList("");
+  chargerJoueursSupabase();
+};
+  
+
 })();
 </script>
 
