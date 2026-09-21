@@ -921,8 +921,8 @@
       players = [];
     }
   }
-  async function savePlayers(){
-  try{
+  aasync function savePlayers(){
+  ttry{
     localStorage.setItem(STORAGE_KEY, JSON.stringify(players));
     
     // Si Supabase est prêt, on synchronise la base de données
@@ -1291,7 +1291,7 @@ document.head.appendChild(supabaseScript);
 supabaseScript.onload = function() {
   // 2. Vos identifiants Supabase (À REMPLACER par vos vraies clés)
   const SUPABASE_URL = "https://mnhfblqcrxljypqcpvux.supabase.co/rest/v1/"; 
-  const SUPABASE_ANON_KEY = "sb_secret_0C8EhPZTkyk5B-PhmgtFig_UxH0wXUm";
+  const SUPABASE_ANON_KEY = sb_secret_0C8EhPZTkyk5B-PhmgtFig_UxH0wXUm;
 
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
